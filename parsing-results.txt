@@ -1,0 +1,946 @@
+
+================================================================================
+Query: SELECT 1
+================================================================================
+{
+  "version": 170004,
+  "stmts": [
+    {
+      "stmt": {
+        "SelectStmt": {
+          "targetList": [
+            {
+              "ResTarget": {
+                "val": {
+                  "A_Const": {
+                    "ival": {
+                      "ival": 1
+                    },
+                    "location": 7
+                  }
+                },
+                "location": 7
+              }
+            }
+          ],
+          "limitOption": "LIMIT_OPTION_DEFAULT",
+          "op": "SETOP_NONE"
+        }
+      }
+    }
+  ]
+}
+
+================================================================================
+Query: SELECT id, name FROM users WHERE age > 18
+================================================================================
+{
+  "version": 170004,
+  "stmts": [
+    {
+      "stmt": {
+        "SelectStmt": {
+          "targetList": [
+            {
+              "ResTarget": {
+                "val": {
+                  "ColumnRef": {
+                    "fields": [
+                      {
+                        "String": {
+                          "sval": "id"
+                        }
+                      }
+                    ],
+                    "location": 7
+                  }
+                },
+                "location": 7
+              }
+            },
+            {
+              "ResTarget": {
+                "val": {
+                  "ColumnRef": {
+                    "fields": [
+                      {
+                        "String": {
+                          "sval": "name"
+                        }
+                      }
+                    ],
+                    "location": 11
+                  }
+                },
+                "location": 11
+              }
+            }
+          ],
+          "fromClause": [
+            {
+              "RangeVar": {
+                "relname": "users",
+                "inh": true,
+                "relpersistence": "p",
+                "location": 21
+              }
+            }
+          ],
+          "whereClause": {
+            "A_Expr": {
+              "kind": "AEXPR_OP",
+              "name": [
+                {
+                  "String": {
+                    "sval": ">"
+                  }
+                }
+              ],
+              "lexpr": {
+                "ColumnRef": {
+                  "fields": [
+                    {
+                      "String": {
+                        "sval": "age"
+                      }
+                    }
+                  ],
+                  "location": 33
+                }
+              },
+              "rexpr": {
+                "A_Const": {
+                  "ival": {
+                    "ival": 18
+                  },
+                  "location": 39
+                }
+              },
+              "location": 37
+            }
+          },
+          "limitOption": "LIMIT_OPTION_DEFAULT",
+          "op": "SETOP_NONE"
+        }
+      }
+    }
+  ]
+}
+
+================================================================================
+Query: SELECT u.id, u.name, o.total FROM users u JOIN orders o ON u.id = o.user_id WHERE o.status = 'completed' ORDER BY o.created_at DESC LIMIT 10
+================================================================================
+{
+  "version": 170004,
+  "stmts": [
+    {
+      "stmt": {
+        "SelectStmt": {
+          "targetList": [
+            {
+              "ResTarget": {
+                "val": {
+                  "ColumnRef": {
+                    "fields": [
+                      {
+                        "String": {
+                          "sval": "u"
+                        }
+                      },
+                      {
+                        "String": {
+                          "sval": "id"
+                        }
+                      }
+                    ],
+                    "location": 7
+                  }
+                },
+                "location": 7
+              }
+            },
+            {
+              "ResTarget": {
+                "val": {
+                  "ColumnRef": {
+                    "fields": [
+                      {
+                        "String": {
+                          "sval": "u"
+                        }
+                      },
+                      {
+                        "String": {
+                          "sval": "name"
+                        }
+                      }
+                    ],
+                    "location": 13
+                  }
+                },
+                "location": 13
+              }
+            },
+            {
+              "ResTarget": {
+                "val": {
+                  "ColumnRef": {
+                    "fields": [
+                      {
+                        "String": {
+                          "sval": "o"
+                        }
+                      },
+                      {
+                        "String": {
+                          "sval": "total"
+                        }
+                      }
+                    ],
+                    "location": 21
+                  }
+                },
+                "location": 21
+              }
+            }
+          ],
+          "fromClause": [
+            {
+              "JoinExpr": {
+                "jointype": "JOIN_INNER",
+                "larg": {
+                  "RangeVar": {
+                    "relname": "users",
+                    "inh": true,
+                    "relpersistence": "p",
+                    "alias": {
+                      "aliasname": "u"
+                    },
+                    "location": 34
+                  }
+                },
+                "rarg": {
+                  "RangeVar": {
+                    "relname": "orders",
+                    "inh": true,
+                    "relpersistence": "p",
+                    "alias": {
+                      "aliasname": "o"
+                    },
+                    "location": 47
+                  }
+                },
+                "quals": {
+                  "A_Expr": {
+                    "kind": "AEXPR_OP",
+                    "name": [
+                      {
+                        "String": {
+                          "sval": "="
+                        }
+                      }
+                    ],
+                    "lexpr": {
+                      "ColumnRef": {
+                        "fields": [
+                          {
+                            "String": {
+                              "sval": "u"
+                            }
+                          },
+                          {
+                            "String": {
+                              "sval": "id"
+                            }
+                          }
+                        ],
+                        "location": 59
+                      }
+                    },
+                    "rexpr": {
+                      "ColumnRef": {
+                        "fields": [
+                          {
+                            "String": {
+                              "sval": "o"
+                            }
+                          },
+                          {
+                            "String": {
+                              "sval": "user_id"
+                            }
+                          }
+                        ],
+                        "location": 66
+                      }
+                    },
+                    "location": 64
+                  }
+                }
+              }
+            }
+          ],
+          "whereClause": {
+            "A_Expr": {
+              "kind": "AEXPR_OP",
+              "name": [
+                {
+                  "String": {
+                    "sval": "="
+                  }
+                }
+              ],
+              "lexpr": {
+                "ColumnRef": {
+                  "fields": [
+                    {
+                      "String": {
+                        "sval": "o"
+                      }
+                    },
+                    {
+                      "String": {
+                        "sval": "status"
+                      }
+                    }
+                  ],
+                  "location": 82
+                }
+              },
+              "rexpr": {
+                "A_Const": {
+                  "sval": {
+                    "sval": "completed"
+                  },
+                  "location": 93
+                }
+              },
+              "location": 91
+            }
+          },
+          "sortClause": [
+            {
+              "SortBy": {
+                "node": {
+                  "ColumnRef": {
+                    "fields": [
+                      {
+                        "String": {
+                          "sval": "o"
+                        }
+                      },
+                      {
+                        "String": {
+                          "sval": "created_at"
+                        }
+                      }
+                    ],
+                    "location": 114
+                  }
+                },
+                "sortby_dir": "SORTBY_DESC",
+                "sortby_nulls": "SORTBY_NULLS_DEFAULT",
+                "location": -1
+              }
+            }
+          ],
+          "limitCount": {
+            "A_Const": {
+              "ival": {
+                "ival": 10
+              },
+              "location": 138
+            }
+          },
+          "limitOption": "LIMIT_OPTION_COUNT",
+          "op": "SETOP_NONE"
+        }
+      }
+    }
+  ]
+}
+
+================================================================================
+Query: INSERT INTO users (name, email, created_at) VALUES ('John', 'john@example.com', NOW())
+================================================================================
+{
+  "version": 170004,
+  "stmts": [
+    {
+      "stmt": {
+        "InsertStmt": {
+          "relation": {
+            "relname": "users",
+            "inh": true,
+            "relpersistence": "p",
+            "location": 12
+          },
+          "cols": [
+            {
+              "ResTarget": {
+                "name": "name",
+                "location": 19
+              }
+            },
+            {
+              "ResTarget": {
+                "name": "email",
+                "location": 25
+              }
+            },
+            {
+              "ResTarget": {
+                "name": "created_at",
+                "location": 32
+              }
+            }
+          ],
+          "selectStmt": {
+            "SelectStmt": {
+              "valuesLists": [
+                {
+                  "List": {
+                    "items": [
+                      {
+                        "A_Const": {
+                          "sval": {
+                            "sval": "John"
+                          },
+                          "location": 52
+                        }
+                      },
+                      {
+                        "A_Const": {
+                          "sval": {
+                            "sval": "john@example.com"
+                          },
+                          "location": 60
+                        }
+                      },
+                      {
+                        "FuncCall": {
+                          "funcname": [
+                            {
+                              "String": {
+                                "sval": "now"
+                              }
+                            }
+                          ],
+                          "funcformat": "COERCE_EXPLICIT_CALL",
+                          "location": 80
+                        }
+                      }
+                    ]
+                  }
+                }
+              ],
+              "limitOption": "LIMIT_OPTION_DEFAULT",
+              "op": "SETOP_NONE"
+            }
+          },
+          "override": "OVERRIDING_NOT_SET"
+        }
+      }
+    }
+  ]
+}
+
+================================================================================
+Query: UPDATE users SET last_login = NOW() WHERE id = 42
+================================================================================
+{
+  "version": 170004,
+  "stmts": [
+    {
+      "stmt": {
+        "UpdateStmt": {
+          "relation": {
+            "relname": "users",
+            "inh": true,
+            "relpersistence": "p",
+            "location": 7
+          },
+          "targetList": [
+            {
+              "ResTarget": {
+                "name": "last_login",
+                "val": {
+                  "FuncCall": {
+                    "funcname": [
+                      {
+                        "String": {
+                          "sval": "now"
+                        }
+                      }
+                    ],
+                    "funcformat": "COERCE_EXPLICIT_CALL",
+                    "location": 30
+                  }
+                },
+                "location": 17
+              }
+            }
+          ],
+          "whereClause": {
+            "A_Expr": {
+              "kind": "AEXPR_OP",
+              "name": [
+                {
+                  "String": {
+                    "sval": "="
+                  }
+                }
+              ],
+              "lexpr": {
+                "ColumnRef": {
+                  "fields": [
+                    {
+                      "String": {
+                        "sval": "id"
+                      }
+                    }
+                  ],
+                  "location": 42
+                }
+              },
+              "rexpr": {
+                "A_Const": {
+                  "ival": {
+                    "ival": 42
+                  },
+                  "location": 47
+                }
+              },
+              "location": 45
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+
+================================================================================
+Query: CREATE TABLE posts (id SERIAL PRIMARY KEY, title TEXT NOT NULL, content TEXT, user_id INTEGER REFERENCES users(id), created_at TIMESTAMP DEFAULT NOW())
+================================================================================
+{
+  "version": 170004,
+  "stmts": [
+    {
+      "stmt": {
+        "CreateStmt": {
+          "relation": {
+            "relname": "posts",
+            "inh": true,
+            "relpersistence": "p",
+            "location": 13
+          },
+          "tableElts": [
+            {
+              "ColumnDef": {
+                "colname": "id",
+                "typeName": {
+                  "names": [
+                    {
+                      "String": {
+                        "sval": "serial"
+                      }
+                    }
+                  ],
+                  "typemod": -1,
+                  "location": 23
+                },
+                "is_local": true,
+                "constraints": [
+                  {
+                    "Constraint": {
+                      "contype": "CONSTR_PRIMARY",
+                      "location": 30
+                    }
+                  }
+                ],
+                "location": 20
+              }
+            },
+            {
+              "ColumnDef": {
+                "colname": "title",
+                "typeName": {
+                  "names": [
+                    {
+                      "String": {
+                        "sval": "text"
+                      }
+                    }
+                  ],
+                  "typemod": -1,
+                  "location": 49
+                },
+                "is_local": true,
+                "constraints": [
+                  {
+                    "Constraint": {
+                      "contype": "CONSTR_NOTNULL",
+                      "location": 54
+                    }
+                  }
+                ],
+                "location": 43
+              }
+            },
+            {
+              "ColumnDef": {
+                "colname": "content",
+                "typeName": {
+                  "names": [
+                    {
+                      "String": {
+                        "sval": "text"
+                      }
+                    }
+                  ],
+                  "typemod": -1,
+                  "location": 72
+                },
+                "is_local": true,
+                "location": 64
+              }
+            },
+            {
+              "ColumnDef": {
+                "colname": "user_id",
+                "typeName": {
+                  "names": [
+                    {
+                      "String": {
+                        "sval": "pg_catalog"
+                      }
+                    },
+                    {
+                      "String": {
+                        "sval": "int4"
+                      }
+                    }
+                  ],
+                  "typemod": -1,
+                  "location": 86
+                },
+                "is_local": true,
+                "constraints": [
+                  {
+                    "Constraint": {
+                      "contype": "CONSTR_FOREIGN",
+                      "initially_valid": true,
+                      "pktable": {
+                        "relname": "users",
+                        "inh": true,
+                        "relpersistence": "p",
+                        "location": 105
+                      },
+                      "pk_attrs": [
+                        {
+                          "String": {
+                            "sval": "id"
+                          }
+                        }
+                      ],
+                      "fk_matchtype": "s",
+                      "fk_upd_action": "a",
+                      "fk_del_action": "a",
+                      "location": 94
+                    }
+                  }
+                ],
+                "location": 78
+              }
+            },
+            {
+              "ColumnDef": {
+                "colname": "created_at",
+                "typeName": {
+                  "names": [
+                    {
+                      "String": {
+                        "sval": "pg_catalog"
+                      }
+                    },
+                    {
+                      "String": {
+                        "sval": "timestamp"
+                      }
+                    }
+                  ],
+                  "typemod": -1,
+                  "location": 127
+                },
+                "is_local": true,
+                "constraints": [
+                  {
+                    "Constraint": {
+                      "contype": "CONSTR_DEFAULT",
+                      "raw_expr": {
+                        "FuncCall": {
+                          "funcname": [
+                            {
+                              "String": {
+                                "sval": "now"
+                              }
+                            }
+                          ],
+                          "funcformat": "COERCE_EXPLICIT_CALL",
+                          "location": 145
+                        }
+                      },
+                      "location": 137
+                    }
+                  }
+                ],
+                "location": 116
+              }
+            }
+          ],
+          "oncommit": "ONCOMMIT_NOOP"
+        }
+      }
+    }
+  ]
+}
+
+================================================================================
+Query: WITH recent_orders AS (SELECT * FROM orders WHERE created_at > NOW() - INTERVAL '7 days') SELECT user_id, COUNT(*) as order_count FROM recent_orders GROUP BY user_id HAVING COUNT(*) > 5
+================================================================================
+{
+  "version": 170004,
+  "stmts": [
+    {
+      "stmt": {
+        "SelectStmt": {
+          "targetList": [
+            {
+              "ResTarget": {
+                "val": {
+                  "ColumnRef": {
+                    "fields": [
+                      {
+                        "String": {
+                          "sval": "user_id"
+                        }
+                      }
+                    ],
+                    "location": 97
+                  }
+                },
+                "location": 97
+              }
+            },
+            {
+              "ResTarget": {
+                "name": "order_count",
+                "val": {
+                  "FuncCall": {
+                    "funcname": [
+                      {
+                        "String": {
+                          "sval": "count"
+                        }
+                      }
+                    ],
+                    "agg_star": true,
+                    "funcformat": "COERCE_EXPLICIT_CALL",
+                    "location": 106
+                  }
+                },
+                "location": 106
+              }
+            }
+          ],
+          "fromClause": [
+            {
+              "RangeVar": {
+                "relname": "recent_orders",
+                "inh": true,
+                "relpersistence": "p",
+                "location": 135
+              }
+            }
+          ],
+          "groupClause": [
+            {
+              "ColumnRef": {
+                "fields": [
+                  {
+                    "String": {
+                      "sval": "user_id"
+                    }
+                  }
+                ],
+                "location": 158
+              }
+            }
+          ],
+          "havingClause": {
+            "A_Expr": {
+              "kind": "AEXPR_OP",
+              "name": [
+                {
+                  "String": {
+                    "sval": ">"
+                  }
+                }
+              ],
+              "lexpr": {
+                "FuncCall": {
+                  "funcname": [
+                    {
+                      "String": {
+                        "sval": "count"
+                      }
+                    }
+                  ],
+                  "agg_star": true,
+                  "funcformat": "COERCE_EXPLICIT_CALL",
+                  "location": 173
+                }
+              },
+              "rexpr": {
+                "A_Const": {
+                  "ival": {
+                    "ival": 5
+                  },
+                  "location": 184
+                }
+              },
+              "location": 182
+            }
+          },
+          "limitOption": "LIMIT_OPTION_DEFAULT",
+          "withClause": {
+            "ctes": [
+              {
+                "CommonTableExpr": {
+                  "ctename": "recent_orders",
+                  "ctematerialized": "CTEMaterializeDefault",
+                  "ctequery": {
+                    "SelectStmt": {
+                      "targetList": [
+                        {
+                          "ResTarget": {
+                            "val": {
+                              "ColumnRef": {
+                                "fields": [
+                                  {
+                                    "A_Star": {}
+                                  }
+                                ],
+                                "location": 30
+                              }
+                            },
+                            "location": 30
+                          }
+                        }
+                      ],
+                      "fromClause": [
+                        {
+                          "RangeVar": {
+                            "relname": "orders",
+                            "inh": true,
+                            "relpersistence": "p",
+                            "location": 37
+                          }
+                        }
+                      ],
+                      "whereClause": {
+                        "A_Expr": {
+                          "kind": "AEXPR_OP",
+                          "name": [
+                            {
+                              "String": {
+                                "sval": ">"
+                              }
+                            }
+                          ],
+                          "lexpr": {
+                            "ColumnRef": {
+                              "fields": [
+                                {
+                                  "String": {
+                                    "sval": "created_at"
+                                  }
+                                }
+                              ],
+                              "location": 50
+                            }
+                          },
+                          "rexpr": {
+                            "A_Expr": {
+                              "kind": "AEXPR_OP",
+                              "name": [
+                                {
+                                  "String": {
+                                    "sval": "-"
+                                  }
+                                }
+                              ],
+                              "lexpr": {
+                                "FuncCall": {
+                                  "funcname": [
+                                    {
+                                      "String": {
+                                        "sval": "now"
+                                      }
+                                    }
+                                  ],
+                                  "funcformat": "COERCE_EXPLICIT_CALL",
+                                  "location": 63
+                                }
+                              },
+                              "rexpr": {
+                                "TypeCast": {
+                                  "arg": {
+                                    "A_Const": {
+                                      "sval": {
+                                        "sval": "7 days"
+                                      },
+                                      "location": 80
+                                    }
+                                  },
+                                  "typeName": {
+                                    "names": [
+                                      {
+                                        "String": {
+                                          "sval": "pg_catalog"
+                                        }
+                                      },
+                                      {
+                                        "String": {
+                                          "sval": "interval"
+                                        }
+                                      }
+                                    ],
+                                    "typemod": -1,
+                                    "location": 71
+                                  },
+                                  "location": -1
+                                }
+                              },
+                              "location": 69
+                            }
+                          },
+                          "location": 61
+                        }
+                      },
+                      "limitOption": "LIMIT_OPTION_DEFAULT",
+                      "op": "SETOP_NONE"
+                    }
+                  },
+                  "location": 5
+                }
+              }
+            ]
+          },
+          "op": "SETOP_NONE"
+        }
+      }
+    }
+  ]
+}

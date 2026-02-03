@@ -1,0 +1,20 @@
+{
+  "name": "poc-json-schema",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "test": "bun test",
+    "showcase": "bun run showcase.ts",
+    "validate": "bun test src/validate-schema.test.ts"
+  },
+  "dependencies": {
+    "ajv": "^8.12.0",
+    "pgsql-parser": "latest"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  }
+}

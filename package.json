@@ -1,0 +1,22 @@
+{
+  "name": "size-test",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@libpg-query/parser": "^17.6.3",
+    "@pgsql/parser": "^1.2.1",
+    "kysely": "^0.28.11",
+    "pgsql-parser": "^17.9.11"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.2"
+  }
+}

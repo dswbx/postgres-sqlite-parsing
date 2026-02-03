@@ -1,0 +1,131 @@
+{
+  "$id": "https://example.com/postgres-json-schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PostgreSQL JSON Schema",
+  "description": "JSON Schema Draft 2020-12 extended with PostgreSQL database metadata",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Reference to this meta-schema"
+    },
+    "type": {
+      "const": "object"
+    },
+    "properties": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/tableSchema"
+      }
+    }
+  },
+  "required": ["type", "properties"],
+  "additionalProperties": false,
+  "$defs": {
+    "tableSchema": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/columnSchema"
+          }
+        },
+        "required": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": ["type", "additionalProperties", "properties", "required"],
+      "additionalProperties": false
+    },
+    "columnSchema": {
+      "description": "Standard JSON Schema properties plus PostgreSQL-specific metadata",
+      "type": "object",
+      "properties": {
+        "$default": {
+          "type": "string",
+          "description": "Computed default expression (e.g., 'now()', 'CURRENT_TIMESTAMP', 'uuid_generate_v4()')",
+          "examples": ["now()", "CURRENT_TIMESTAMP", "uuid_generate_v4()"]
+        },
+        "$primaryKey": {
+          "type": "boolean",
+          "const": true,
+          "description": "Indicates this column is a primary key"
+        },
+        "$index": {
+          "oneOf": [
+            { "const": true, "description": "Regular index" },
+            { "const": "unique", "description": "Unique index" }
+          ],
+          "description": "Database index: true (regular) or 'unique' (unique constraint)"
+        },
+        "$ref": {
+          "type": "string",
+          "pattern": "^#/properties/[^/]+/properties/[^/]+$",
+          "description": "Foreign key reference to another column (JSON Schema path format)",
+          "examples": ["#/properties/users/properties/id"]
+        },
+        "$onDelete": {
+          "type": "string",
+          "enum": ["cascade", "set null", "set default", "restrict"],
+          "description": "Foreign key ON DELETE action (omitted if 'no action')"
+        },
+        "$onUpdate": {
+          "type": "string",
+          "enum": ["cascade", "set null", "set default", "restrict"],
+          "description": "Foreign key ON UPDATE action (omitted if 'no action')"
+        }
+      },
+      "oneOf": [
+        {
+          "description": "Foreign key column: has $ref, no type duplication",
+          "required": ["$ref"],
+          "not": {
+            "anyOf": [
+              { "required": ["type"] },
+              { "required": ["format"] },
+              { "required": ["maxLength"] }
+            ]
+          }
+        },
+        {
+          "description": "Regular column: has type, no $ref",
+          "required": ["type"],
+          "not": {
+            "required": ["$ref"]
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "description": "Cannot have both simple default and computed default",
+          "not": {
+            "required": ["default", "$default"]
+          }
+        },
+        {
+          "description": "$onDelete/$onUpdate only valid with $ref",
+          "if": {
+            "anyOf": [
+              { "required": ["$onDelete"] },
+              { "required": ["$onUpdate"] }
+            ]
+          },
+          "then": {
+            "required": ["$ref"]
+          }
+        }
+      ]
+    }
+  }
+}

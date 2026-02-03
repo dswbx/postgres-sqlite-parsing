@@ -1,0 +1,36 @@
+{
+   "type": "object",
+   "properties": {
+      "orders": {
+         "type": "object",
+         "additionalProperties": false,
+         "properties": {
+            "id": {
+               "type": "integer"
+            },
+            "user_id": {
+               "type": "integer",
+               "$ref": "#/users/id"
+            },
+            "status": {
+               "type": "string",
+               "enum": ["pending", "completed", "cancelled"],
+               "default": "pending"
+            },
+            "total": {
+               "type": "number",
+               "minimum": 0
+            }
+         }
+      },
+      "users": {
+         "type": "object",
+         "additionalProperties": false,
+         "properties": {
+            "id": {
+               "type": "integer"
+            }
+         }
+      }
+   }
+}
