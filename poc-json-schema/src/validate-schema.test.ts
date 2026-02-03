@@ -6,11 +6,9 @@ import { join } from 'path';
 
 describe('Schema Validation', () => {
   test('Generated schema conforms to postgres-json-schema meta-schema', async () => {
-    // Load the meta-schema
     const metaSchemaPath = join(import.meta.dir, '..', 'postgres-json-schema.schema.json');
     const metaSchema = JSON.parse(readFileSync(metaSchemaPath, 'utf-8'));
 
-    // Generate a schema
     const schema = await convert(`
       CREATE TABLE users (
         id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -28,7 +26,6 @@ describe('Schema Validation', () => {
       );
     `);
 
-    // Validate against meta-schema
     const ajv = new Ajv2020({ strict: false });
     const validate = ajv.compile(metaSchema);
     const valid = validate(schema);
@@ -38,6 +35,105 @@ describe('Schema Validation', () => {
     }
 
     expect(valid).toBe(true);
+  });
+
+  test('Schema with ARRAY types conforms to meta-schema', async () => {
+    const metaSchemaPath = join(import.meta.dir, '..', 'postgres-json-schema.schema.json');
+    const metaSchema = JSON.parse(readFileSync(metaSchemaPath, 'utf-8'));
+
+    const schema = await convert(`
+      CREATE TABLE products (
+        id INTEGER PRIMARY KEY,
+        tags TEXT[],
+        matrix INTEGER[][],
+        names VARCHAR(100)[]
+      );
+    `);
+
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(metaSchema);
+    const valid = validate(schema);
+
+    if (!valid) {
+      console.error('Validation errors:', JSON.stringify(validate.errors, null, 2));
+    }
+
+    expect(valid).toBe(true);
+    expect(schema.properties.products.properties.tags).toEqual({
+      type: 'array',
+      items: { type: 'string' }
+    });
+    expect(schema.properties.products.properties.matrix).toEqual({
+      type: 'array',
+      items: { type: 'array', items: { type: 'integer' } }
+    });
+  });
+
+  test('Schema with custom ENUM types conforms to meta-schema', async () => {
+    const metaSchemaPath = join(import.meta.dir, '..', 'postgres-json-schema.schema.json');
+    const metaSchema = JSON.parse(readFileSync(metaSchemaPath, 'utf-8'));
+
+    const schema = await convert(`
+      CREATE TYPE status AS ENUM ('pending', 'active', 'closed');
+      CREATE TYPE priority AS ENUM ('low', 'medium', 'high');
+
+      CREATE TABLE tasks (
+        id INTEGER PRIMARY KEY,
+        status status NOT NULL,
+        priority priority DEFAULT 'medium'
+      );
+    `);
+
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(metaSchema);
+    const valid = validate(schema);
+
+    if (!valid) {
+      console.error('Validation errors:', JSON.stringify(validate.errors, null, 2));
+    }
+
+    expect(valid).toBe(true);
+    expect(schema.$defs).toBeDefined();
+    expect(schema.$defs?.status).toEqual({ type: 'string', enum: ['pending', 'active', 'closed'] });
+    expect(schema.$defs?.priority).toEqual({ type: 'string', enum: ['low', 'medium', 'high'] });
+    expect(schema.properties.tasks.properties.status).toEqual({ $ref: '#/$defs/status' });
+    expect(schema.properties.tasks.properties.priority).toEqual({
+      $ref: '#/$defs/priority',
+      default: 'medium'
+    });
+  });
+
+  test('Schema with NUMERIC precision conforms to meta-schema', async () => {
+    const metaSchemaPath = join(import.meta.dir, '..', 'postgres-json-schema.schema.json');
+    const metaSchema = JSON.parse(readFileSync(metaSchemaPath, 'utf-8'));
+
+    const schema = await convert(`
+      CREATE TABLE prices (
+        id INTEGER PRIMARY KEY,
+        price NUMERIC(10,2),
+        rate DECIMAL(5,3),
+        amount NUMERIC
+      );
+    `);
+
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(metaSchema);
+    const valid = validate(schema);
+
+    if (!valid) {
+      console.error('Validation errors:', JSON.stringify(validate.errors, null, 2));
+    }
+
+    expect(valid).toBe(true);
+    expect(schema.properties.prices.properties.price).toMatchObject({
+      type: 'number',
+      multipleOf: 0.01
+    });
+    expect(schema.properties.prices.properties.rate).toMatchObject({
+      type: 'number',
+      multipleOf: 0.001
+    });
+    expect(schema.properties.prices.properties.amount).toEqual({ type: 'number' });
   });
 
   test('Invalid schema is rejected by meta-schema', async () => {
@@ -69,5 +165,28 @@ describe('Schema Validation', () => {
 
     expect(valid).toBe(false);
     expect(validate.errors).toBeDefined();
+  });
+
+  test('Invalid $defs entry is rejected', async () => {
+    const metaSchemaPath = join(import.meta.dir, '..', 'postgres-json-schema.schema.json');
+    const metaSchema = JSON.parse(readFileSync(metaSchemaPath, 'utf-8'));
+
+    const invalidSchema = {
+      $schema: 'https://example.com/postgres-json-schema.json',
+      type: 'object',
+      $defs: {
+        status: {
+          type: 'integer',  // ENUMs must be type: string
+          enum: ['a', 'b']
+        }
+      },
+      properties: {}
+    };
+
+    const ajv = new Ajv2020({ strict: false });
+    const validate = ajv.compile(metaSchema);
+    const valid = validate(invalidSchema);
+
+    expect(valid).toBe(false);
   });
 });

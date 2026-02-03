@@ -4,6 +4,7 @@ import { analyzeCheck } from './check-analyzer.js';
 interface JsonSchema {
   $schema: string;
   type: 'object';
+  $defs?: Record<string, any>;
   properties: Record<string, TableSchema>;
 }
 
@@ -15,9 +16,10 @@ interface TableSchema {
 }
 
 interface PropertySchema {
-  type: string;
+  type?: string;
   format?: string;
   maxLength?: number;
+  multipleOf?: number;
   minimum?: number;
   maximum?: number;
   enum?: any[];
@@ -29,6 +31,7 @@ interface PropertySchema {
   $ref?: string;
   $onDelete?: string;
   $onUpdate?: string;
+  items?: any;
 }
 
 interface DefaultValue {
@@ -203,6 +206,18 @@ export class PgToJsonSchemaConverter {
     type: 'object',
     properties: {}
   };
+  private enumRegistry: Map<string, string[]>;
+
+  constructor(enumRegistry?: Map<string, string[]>) {
+    this.enumRegistry = enumRegistry || new Map();
+    // Populate $defs from enum registry
+    if (this.enumRegistry.size > 0) {
+      this.schema.$defs = {};
+      for (const [name, values] of this.enumRegistry) {
+        this.schema.$defs[name] = { type: 'string', enum: values };
+      }
+    }
+  }
 
   convertCreateStmt(stmt: any) {
     const table = stmt.relation.relname;
@@ -228,11 +243,23 @@ export class PgToJsonSchemaConverter {
   private addColumn(tableSchema: TableSchema, col: any) {
     const name = col.colname;
     const pgType = extractTypeName(col.typeName);
-    const jsonType = mapType(pgType, col.typeName?.typmods);
+    const arrayBounds = col.typeName?.arrayBounds;
 
-    const prop: PropertySchema = { type: jsonType.type };
-    if (jsonType.format) prop.format = jsonType.format;
-    if (jsonType.maxLength) prop.maxLength = jsonType.maxLength;
+    let prop: PropertySchema;
+    let isEnumRef = false;
+
+    // Check if it's a custom enum type
+    if (this.enumRegistry.has(pgType)) {
+      prop = { $ref: `#/$defs/${pgType}` };
+      isEnumRef = true;
+    } else {
+      const jsonType = mapType(pgType, col.typeName?.typmods, arrayBounds);
+      prop = { type: jsonType.type };
+      if (jsonType.format) prop.format = jsonType.format;
+      if (jsonType.maxLength) prop.maxLength = jsonType.maxLength;
+      if (jsonType.multipleOf) prop.multipleOf = jsonType.multipleOf;
+      if (jsonType.items) prop.items = jsonType.items;
+    }
 
     let isRequired = false;
     let isPrimaryKey = false;
@@ -259,20 +286,19 @@ export class PgToJsonSchemaConverter {
           break;
 
         case 'CONSTR_CHECK':
-          const validation = analyzeCheck(c.Constraint.raw_expr, name);
-          if (validation) {
-            Object.assign(prop, validation);
+          if (!isEnumRef) {
+            const validation = analyzeCheck(c.Constraint.raw_expr, name);
+            if (validation) {
+              Object.assign(prop, validation);
+            }
           }
-          // Skip complex checks that can't be expressed
           break;
 
         case 'CONSTR_DEFAULT':
           const defaultValue = extractDefault(c.Constraint.raw_expr);
           if (defaultValue.simple !== undefined) {
-            // Simple constant: use standard JSON Schema `default`
             prop.default = defaultValue.simple;
           } else if (defaultValue.computed) {
-            // Computed expression: use custom `$default` for app to handle
             prop.$default = defaultValue.computed;
           }
           break;
@@ -282,7 +308,6 @@ export class PgToJsonSchemaConverter {
           if (fk.table && fk.column) {
             hasForeignKey = true;
             prop.$ref = `#/properties/${fk.table}/properties/${fk.column}`;
-            // Only include onDelete/onUpdate if not "no action" (default)
             if (fk.onDelete && fk.onDelete !== 'no action') {
               prop.$onDelete = fk.onDelete;
             }

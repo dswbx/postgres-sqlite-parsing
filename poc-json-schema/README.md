@@ -32,6 +32,12 @@ The generated schema includes a `$schema` property pointing to the meta-schema t
 {
   "$schema": "https://example.com/postgres-json-schema.json",
   "type": "object",
+  "$defs": {
+    "status": {
+      "type": "string",
+      "enum": ["pending", "completed"]
+    }
+  },
   "properties": {
     "users": {
       "type": "object",
@@ -45,6 +51,10 @@ The generated schema includes a `$schema` property pointing to the meta-schema t
           "type": "string",
           "maxLength": 255,
           "$index": "unique"
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
         }
       },
       "required": ["email"]
@@ -56,6 +66,13 @@ The generated schema includes a `$schema` property pointing to the meta-schema t
         "user_id": {
           "$ref": "#/properties/users/properties/id",
           "$onDelete": "cascade"
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "total": {
+          "type": "number",
+          "multipleOf": 0.01
         }
       },
       "required": []
@@ -76,12 +93,15 @@ The generated schema includes a `$schema` property pointing to the meta-schema t
 - `VARCHAR(n)` → `string` + `maxLength: n`
 - `INTEGER/BIGINT` → `integer`
 - `NUMERIC/DECIMAL` → `number`
+- `NUMERIC(p,s)` → `number` + `multipleOf: 10^(-s)`
 - `BOOLEAN` → `boolean`
 - `TIMESTAMP` → `string` + `format: "date-time"`
 - `DATE` → `string` + `format: "date"`
 - `UUID` → `string` + `format: "uuid"`
 - `JSONB` → `object`
 - `BYTEA` → `string` + `format: "binary"`
+- `TEXT[]`, `INTEGER[][]` → `array` + `items` (multi-dimensional supported)
+- `CREATE TYPE ... AS ENUM` → `$defs` + `$ref`
 
 ### Constraint Mapping
 - `NOT NULL` → `required` array (except PKs)
@@ -124,6 +144,60 @@ The `$default` property contains the PostgreSQL expression as-is. Applications s
 - Ignore if not needed for validation-only schemas
 - Use for code generation (ORM defaults, API docs, etc.)
 
+## Support Matrix
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| **Types** | | |
+| INTEGER, BIGINT, SMALLINT | ✅ | → `integer` |
+| SERIAL, BIGSERIAL | ✅ | → `integer` |
+| NUMERIC, DECIMAL | ✅ | → `number` |
+| NUMERIC(p,s), DECIMAL(p,s) | ✅ | → `number` + `multipleOf` |
+| VARCHAR(n), CHAR(n) | ✅ | → `string` + `maxLength` |
+| TEXT | ✅ | → `string` |
+| BOOLEAN | ✅ | → `boolean` |
+| TIMESTAMP, TIMESTAMPTZ | ✅ | → `string` + `date-time` |
+| DATE | ✅ | → `string` + `date` |
+| TIME, TIMETZ | ✅ | → `string` + `time` |
+| UUID | ✅ | → `string` + `uuid` |
+| BYTEA | ✅ | → `string` + `binary` |
+| JSON, JSONB | ✅ | → `object` |
+| ARRAY types | ✅ | → `array` + `items` (multi-dim supported) |
+| Custom ENUM | ✅ | → `$defs` + `$ref` |
+| LTREE, HSTORE | ❌ | extensions |
+| TSTZRANGE, etc | ❌ | range types |
+| **Constraints** | | |
+| PRIMARY KEY (single) | ✅ | → `$primaryKey` |
+| PRIMARY KEY (composite) | ❌ | table-level, complex |
+| NOT NULL | ✅ | → `required[]` |
+| UNIQUE (column) | ✅ | → `$index: "unique"` |
+| UNIQUE (composite) | ❌ | table-level |
+| CHECK `>= n` | ✅ | → `minimum` |
+| CHECK `<= n` | ✅ | → `maximum` |
+| CHECK `IN (...)` | ✅ | → `enum` |
+| CHECK `~ 'pattern'` | ✅ | → `pattern` |
+| CHECK (multi-column) | ❌ | cross-column logic |
+| CHECK (function call) | ❌ | runtime evaluation |
+| FOREIGN KEY | ✅ | → `$ref` |
+| ON DELETE/UPDATE | ✅ | → `$onDelete/$onUpdate` |
+| EXCLUDE | ❌ | complex |
+| **Defaults** | | |
+| Literal values | ✅ | → `default` |
+| NOW(), CURRENT_TIMESTAMP | ✅ | → `$default` |
+| uuid_generate_v4(), gen_random_uuid() | ✅ | → `$default` |
+| Complex expressions | ⚠️ | → `$default: "EXPRESSION"` |
+| GENERATED columns | ❌ | not parsed |
+| **DDL Statements** | | |
+| CREATE TABLE | ✅ | main entry point |
+| CREATE TYPE AS ENUM | ✅ | → `$defs` |
+| CREATE INDEX | ❌ | ignored |
+| CREATE TYPE (composite) | ❌ | ignored |
+| CREATE VIEW | ❌ | ignored |
+| CREATE FUNCTION | ❌ | ignored |
+| ALTER TABLE | ❌ | ignored |
+| CREATE TRIGGER | ❌ | ignored |
+| PARTITION BY | ❌ | ignored |
+
 ### Limitations
 - Composite PRIMARY KEY/UNIQUE not supported (table-level)
 - Complex CHECK constraints skipped (can't express naturally in JSON Schema)
@@ -134,19 +208,20 @@ The `$default` property contains the PostgreSQL expression as-is. Applications s
 The output format is defined by a JSON Schema meta-schema in `postgres-json-schema.schema.json`. This meta-schema:
 
 - **Extends JSON Schema Draft 2020-12** (latest standard)
-- Uses standard JSON Schema properties (type, format, minimum, maximum, enum, pattern, default, etc.)
+- Uses standard JSON Schema properties (type, format, minimum, maximum, enum, pattern, default, items, multipleOf, etc.)
+- Adds `$defs` for custom type definitions (e.g., ENUMs)
 - Adds PostgreSQL-specific `$`-prefixed properties:
   - `$primaryKey`: boolean (primary key indicator)
   - `$index`: true | "unique" (database index: regular or unique)
-  - `$ref`: string (foreign key reference, JSON Schema path format)
+  - `$ref`: string (foreign key or custom type reference)
   - `$onDelete`: string (FK ON DELETE action)
   - `$onUpdate`: string (FK ON UPDATE action)
   - `$default`: string (computed default expression)
 - Enforces constraints:
-  - Foreign key columns must have `$ref` and no type duplication
+  - Foreign key / enum ref columns must have `$ref` and no type duplication
   - Cannot have both `default` and `$default`
   - `$onDelete`/`$onUpdate` only valid with `$ref`
-  - Non-FK columns must have `type`
+  - Non-ref columns must have `type`
 
 **Validation:**
 ```typescript

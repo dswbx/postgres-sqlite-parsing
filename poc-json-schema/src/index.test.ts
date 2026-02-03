@@ -367,3 +367,88 @@ describe('Schema Structure', () => {
     expect(schema.properties.t.required).toEqual([]);
   });
 });
+
+describe('ARRAY Types', () => {
+  test('TEXT[] → array of strings', async () => {
+    const schema = await convert('CREATE TABLE t (tags TEXT[]);');
+    expect(schema.properties.t.properties.tags).toEqual({
+      type: 'array',
+      items: { type: 'string' }
+    });
+  });
+
+  test('INTEGER[][] → nested arrays', async () => {
+    const schema = await convert('CREATE TABLE t (matrix INTEGER[][]);');
+    expect(schema.properties.t.properties.matrix).toEqual({
+      type: 'array',
+      items: { type: 'array', items: { type: 'integer' } }
+    });
+  });
+
+  test('VARCHAR(100)[] preserves maxLength in items', async () => {
+    const schema = await convert('CREATE TABLE t (names VARCHAR(100)[]);');
+    expect(schema.properties.t.properties.names).toEqual({
+      type: 'array',
+      items: { type: 'string', maxLength: 100 }
+    });
+  });
+});
+
+describe('Custom ENUM Types', () => {
+  test('CREATE TYPE ENUM → $defs + $ref', async () => {
+    const schema = await convert(`
+      CREATE TYPE status AS ENUM ('pending', 'active');
+      CREATE TABLE t (s status);
+    `);
+    expect(schema.$defs?.status).toEqual({
+      type: 'string',
+      enum: ['pending', 'active']
+    });
+    expect(schema.properties.t.properties.s).toEqual({
+      $ref: '#/$defs/status'
+    });
+  });
+
+  test('ENUM column with NOT NULL → required', async () => {
+    const schema = await convert(`
+      CREATE TYPE role AS ENUM ('admin', 'user');
+      CREATE TABLE t (r role NOT NULL);
+    `);
+    expect(schema.properties.t.required).toContain('r');
+  });
+
+  test('ENUM column with DEFAULT', async () => {
+    const schema = await convert(`
+      CREATE TYPE priority AS ENUM ('low', 'medium', 'high');
+      CREATE TABLE t (p priority DEFAULT 'medium');
+    `);
+    expect(schema.properties.t.properties.p).toEqual({
+      $ref: '#/$defs/priority',
+      default: 'medium'
+    });
+  });
+});
+
+describe('NUMERIC Precision', () => {
+  test('NUMERIC(10,2) → multipleOf 0.01', async () => {
+    const schema = await convert('CREATE TABLE t (price NUMERIC(10,2));');
+    expect(schema.properties.t.properties.price).toMatchObject({
+      type: 'number',
+      multipleOf: 0.01
+    });
+  });
+
+  test('DECIMAL(5,3) → multipleOf 0.001', async () => {
+    const schema = await convert('CREATE TABLE t (rate DECIMAL(5,3));');
+    expect(schema.properties.t.properties.rate).toMatchObject({
+      type: 'number',
+      multipleOf: 0.001
+    });
+  });
+
+  test('NUMERIC without precision → no multipleOf', async () => {
+    const schema = await convert('CREATE TABLE t (val NUMERIC);');
+    expect(schema.properties.t.properties.val).toEqual({ type: 'number' });
+    expect(schema.properties.t.properties.val.multipleOf).toBeUndefined();
+  });
+});

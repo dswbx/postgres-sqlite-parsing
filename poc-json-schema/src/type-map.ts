@@ -1,7 +1,9 @@
 export interface JsonSchemaType {
-  type: 'string' | 'integer' | 'number' | 'boolean' | 'object';
+  type?: 'string' | 'integer' | 'number' | 'boolean' | 'object' | 'array';
   format?: string;
   maxLength?: number;
+  multipleOf?: number;
+  items?: JsonSchemaType;
 }
 
 const TYPE_MAP: Record<string, JsonSchemaType> = {
@@ -51,8 +53,7 @@ const TYPE_MAP: Record<string, JsonSchemaType> = {
   jsonb: { type: 'object' },
 };
 
-function extractLength(typmod: any): number | undefined {
-  // Extract length from A_Const node
+function extractIntVal(typmod: any): number | undefined {
   if (typmod?.A_Const?.ival?.ival !== undefined) {
     return typmod.A_Const.ival.ival;
   }
@@ -62,16 +63,33 @@ function extractLength(typmod: any): number | undefined {
   return undefined;
 }
 
-export function mapType(pgType: string, typmods?: any[]): JsonSchemaType {
+export function mapType(pgType: string, typmods?: any[], arrayBounds?: any[]): JsonSchemaType {
   const normalized = pgType.toLowerCase().trim();
-  const base = TYPE_MAP[normalized] || { type: 'string' };
+  let base: JsonSchemaType = TYPE_MAP[normalized] ? { ...TYPE_MAP[normalized] } : { type: 'string' };
 
-  // Extract VARCHAR(50) → maxLength: 50
+  // VARCHAR(50) → maxLength: 50
   if ((normalized === 'varchar' || normalized === 'char') && typmods?.[0]) {
-    const length = extractLength(typmods[0]);
+    const length = extractIntVal(typmods[0]);
     if (length && length > 0) {
-      return { ...base, maxLength: length };
+      base.maxLength = length;
     }
+  }
+
+  // NUMERIC(p,s) → multipleOf: 10^(-scale)
+  if ((normalized === 'numeric' || normalized === 'decimal') && typmods?.length === 2) {
+    const scale = extractIntVal(typmods[1]);
+    if (scale !== undefined && scale > 0) {
+      base.multipleOf = Math.pow(10, -scale);
+    }
+  }
+
+  // Wrap in array for each dimension
+  if (arrayBounds && arrayBounds.length > 0) {
+    let result = base;
+    for (let i = 0; i < arrayBounds.length; i++) {
+      result = { type: 'array', items: result };
+    }
+    return result;
   }
 
   return base;
