@@ -2,9 +2,14 @@
   "name": "poc-deparser",
   "version": "1.0.0",
   "type": "module",
+  "bin": {
+    "pg2sqlite": "./dist/pg2sqlite.js"
+  },
   "scripts": {
     "build": "tsc",
-    "test": "tsx src/test.ts"
+    "test": "tsx src/test.ts",
+    "test:sqlite": "tsx src/test-sqlite-valid.ts",
+    "pg2sqlite": "tsx src/pg2sqlite.ts"
   },
   "dependencies": {
     "pgsql-parser": "latest",
