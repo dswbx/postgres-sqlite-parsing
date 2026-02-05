@@ -1,5 +1,5 @@
-import { convert } from './src/index.js';
-import { writeFileSync } from 'fs';
+import { convert } from "./src/index.js";
+import { writeFileSync } from "fs";
 
 // Medium complexity e-commerce schema showcasing all features
 const pgSql = `
@@ -75,12 +75,12 @@ const pgSql = `
   );
 `;
 
-console.log('Converting PostgreSQL DDL to JSON Schema...\n');
+console.log("Converting PostgreSQL DDL to JSON Schema...\n");
 
 const schema = await convert(pgSql);
 
 // Write to file
-const outputPath = './schema.json';
+const outputPath = "./schema.json";
 writeFileSync(outputPath, JSON.stringify(schema, null, 2));
 
 console.log(`✓ Conversion complete!`);
@@ -92,25 +92,32 @@ let totalColumns = 0;
 let constraintsCount = { pk: 0, fk: 0, index: 0, check: 0, default: 0 };
 
 for (const [tableName, table] of Object.entries(schema.properties)) {
-  const cols = Object.keys(table.properties).length;
-  totalColumns += cols;
+   const cols = Object.keys(table.properties).length;
+   totalColumns += cols;
 
-  for (const prop of Object.values(table.properties) as any[]) {
-    if (prop.$primaryKey) constraintsCount.pk++;
-    if (prop.$ref) constraintsCount.fk++;
-    if (prop.$index) constraintsCount.index++;
-    if (prop.minimum !== undefined || prop.maximum !== undefined || prop.enum || prop.pattern) {
-      constraintsCount.check++;
-    }
-    if (prop.default !== undefined) constraintsCount.default++;
-  }
+   for (const prop of Object.values(table.properties) as any[]) {
+      if (prop.$primaryKey) constraintsCount.pk++;
+      if (prop.$ref) constraintsCount.fk++;
+      if (prop.$index) constraintsCount.index++;
+      if (
+         prop.minimum !== undefined ||
+         prop.maximum !== undefined ||
+         prop.enum ||
+         prop.pattern
+      ) {
+         constraintsCount.check++;
+      }
+      if (prop.default !== undefined) constraintsCount.default++;
+   }
 }
 
 console.log(`  - Columns: ${totalColumns}`);
 console.log(`  - Primary keys: ${constraintsCount.pk}`);
 console.log(`  - Foreign keys: ${constraintsCount.fk}`);
 console.log(`  - Indexes: ${constraintsCount.index}`);
-console.log(`  - CHECK constraints (validation rules): ${constraintsCount.check}`);
+console.log(
+   `  - CHECK constraints (validation rules): ${constraintsCount.check}`
+);
 console.log(`  - DEFAULT values: ${constraintsCount.default}`);
 
 console.log(`\nKey features demonstrated:`);
@@ -118,7 +125,9 @@ console.log(`  - FK $ref without type duplication (DRY principle)`);
 console.log(`  - Proper $ref paths: #/properties/table/properties/column`);
 console.log(`  - $onDelete/$onUpdate only when not "no action" (default)`);
 console.log(`  - Primary keys NOT in required (auto-generated)`);
-console.log(`  - Computed defaults: $default for now(), CURRENT_TIMESTAMP, uuid_generate_v4()`);
+console.log(
+   `  - Computed defaults: $default for now(), CURRENT_TIMESTAMP, uuid_generate_v4()`
+);
 console.log(`\nValidation rules preserved:`);
 console.log(`  - email pattern validation`);
 console.log(`  - age range: 18-120`);
@@ -126,3 +135,16 @@ console.log(`  - rating enum: 1-5`);
 console.log(`  - price > 0`);
 console.log(`  - discount: 0-100%`);
 console.log(`  - VARCHAR lengths (50, 100, 200, 255)`);
+
+console.dir(
+   JSON.stringify(
+      await convert(`CREATE TABLE users (
+  id INTEGER PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  type TEXT CHECK (type IN ('member', 'admin')) DEFAULT 'member'
+);`),
+      null,
+      2
+   ),
+   { depth: null }
+);
