@@ -16,7 +16,8 @@
     "pgsql-deparser": "^17.17.2",
     "pgsql-parser": "^17.9.11",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "sql-formatter": "^15.7.2"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

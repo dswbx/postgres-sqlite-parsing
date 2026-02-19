@@ -1,6 +1,8 @@
 import { useState } from "react";
 import Editor from "./components/Editor";
 import OutputPanel from "./components/OutputPanel";
+import Toolbar from "./components/Toolbar";
+import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const SAMPLE_DDL = `-- Custom ENUM type
 CREATE TYPE order_status AS ENUM ('pending', 'processing', 'shipped', 'delivered');
@@ -20,7 +22,6 @@ CREATE TABLE orders (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   status order_status DEFAULT 'pending',
   total NUMERIC(10,2) CHECK (total >= 0) NOT NULL,
-  uuid UUID DEFAULT gen_random_uuid(),
   items JSONB,
   notes TEXT,
   ordered_at TIMESTAMP DEFAULT NOW()
@@ -28,6 +29,8 @@ CREATE TABLE orders (
 
 export default function App() {
    const [sql, setSql] = useState(SAMPLE_DDL);
+   const [fontSize, setFontSize] = useLocalStorage("editor-font-size", 14);
+   const [wordWrap, setWordWrap] = useLocalStorage("editor-word-wrap", false);
 
    return (
       <div className="h-full flex flex-col">
@@ -35,6 +38,12 @@ export default function App() {
             <h1 className="text-sm font-semibold text-[#ccc]">
                PG → SQLite / JSON Schema
             </h1>
+            <Toolbar
+               fontSize={fontSize}
+               onFontSizeChange={setFontSize}
+               wordWrap={wordWrap}
+               onWordWrapChange={setWordWrap}
+            />
             <a
                href="https://github.com/dswbx/postgres-sqlite-parsing"
                target="_blank"
@@ -50,11 +59,16 @@ export default function App() {
                   Postgres DDL
                </div>
                <div className="flex-1 min-h-0">
-                  <Editor value={sql} onChange={setSql} />
+                  <Editor
+                     value={sql}
+                     onChange={setSql}
+                     fontSize={fontSize}
+                     wordWrap={wordWrap}
+                  />
                </div>
             </div>
             <div className="min-h-0 overflow-hidden">
-               <OutputPanel sql={sql} />
+               <OutputPanel sql={sql} fontSize={fontSize} wordWrap={wordWrap} />
             </div>
          </div>
       </div>
