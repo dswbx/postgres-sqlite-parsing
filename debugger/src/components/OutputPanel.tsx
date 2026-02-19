@@ -7,9 +7,10 @@ import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import { convert, jsonSchemaToSqlite } from "@poc/json-schema";
 import { translate } from "@poc/deparser";
+import { parse } from "pgsql-parser";
 import { format } from "sql-formatter";
 
-type Tab = "json-schema" | "sqlite";
+type Tab = "json-schema" | "sqlite" | "parser-ast";
 
 interface OutputPanelProps {
    sql: string;
@@ -28,6 +29,7 @@ export default function OutputPanel({
    const [tabStates, setTabStates] = useState<Record<Tab, TabState>>({
       sqlite: { result: "", error: "" },
       "json-schema": { result: "", error: "" },
+      "parser-ast": { result: "", error: "" },
    });
    const [loading, setLoading] = useState(false);
    const [sqliteFromSchema, setSqliteFromSchema] = useState("");
@@ -41,7 +43,10 @@ export default function OutputPanel({
       if (tab === "json-schema") setSqliteFromSchema("");
       try {
          let output: string;
-         if (tab === "json-schema") {
+         if (tab === "parser-ast") {
+            const ast = await parse(inputSql);
+            output = JSON.stringify(ast, null, 2);
+         } else if (tab === "json-schema") {
             const schema = await convert(inputSql);
             schemaRef.current = schema;
             output = JSON.stringify(schema, null, 2);
@@ -109,6 +114,7 @@ export default function OutputPanel({
    const tabs: { id: Tab; label: string }[] = [
       { id: "sqlite", label: "SQLite DDL" },
       { id: "json-schema", label: "JSON Schema" },
+      { id: "parser-ast", label: "Parser AST" },
    ];
 
    return (
@@ -118,7 +124,7 @@ export default function OutputPanel({
                <button
                   key={t.id}
                   onClick={() => setTab(t.id)}
-                  className={`px-3 py-1.5 text-xs transition-colors cursor-pointer border-b-2 ${
+                  className={`px-3 pt-1.5 pb-1 text-xs transition-colors cursor-pointer border-b-2 ${
                      tab === t.id
                         ? "text-white border-[#0e639c]"
                         : "text-[#888] border-transparent hover:text-[#ccc]"
@@ -141,7 +147,7 @@ export default function OutputPanel({
                <pre className="p-4 text-red-400 text-sm whitespace-pre-wrap font-mono">
                   {error}
                </pre>
-            ) : tab === "json-schema" && result ? (
+            ) : (tab === "json-schema" || tab === "parser-ast") && result ? (
                <div className="flex flex-col h-full">
                   <div className="flex-1 min-h-0 overflow-auto">
                      <CodeMirror
@@ -153,7 +159,7 @@ export default function OutputPanel({
                         style={{ height: "100%" }}
                      />
                   </div>
-                  {sqliteFromSchema && (
+                  {tab === "json-schema" && sqliteFromSchema && (
                      <>
                         <div className="px-3 py-1 text-xs text-white bg-[#252526] border-y border-[#333]">
                            SQLite DDL

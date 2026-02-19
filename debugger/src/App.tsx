@@ -55,7 +55,7 @@ export default function App() {
          </header>
          <div className="flex-1 grid grid-cols-2 min-h-0">
             <div className="border-r border-[#333] min-h-0 overflow-hidden flex flex-col">
-               <div className="flex items-center pl-4 px-2 py-1.5 bg-[#252526] border-b border-[#333] text-xs text-white">
+               <div className="flex items-center pl-4 px-2 py-1.5 bg-[#252526] border-b border-[#333] text-xs text-white ">
                   Postgres DDL
                </div>
                <div className="flex-1 min-h-0">
