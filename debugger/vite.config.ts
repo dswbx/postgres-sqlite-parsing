@@ -23,6 +23,24 @@ function serveLibpgQueryWasm() {
         next();
       });
     },
+    configurePreviewServer(server) {
+      server.middlewares.use((req, res, next) => {
+        if (req.url?.endsWith('libpg-query.wasm')) {
+          res.setHeader('Content-Type', 'application/wasm');
+          fs.createReadStream(wasmPath).pipe(res);
+          return;
+        }
+        next();
+      });
+    },
+    closeBundle() {
+      const outDir = path.resolve(__dirname, 'dist/assets');
+      const dest = path.join(outDir, 'libpg-query.wasm');
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(outDir, { recursive: true });
+        fs.copyFileSync(wasmPath, dest);
+      }
+    },
   };
 }
 
