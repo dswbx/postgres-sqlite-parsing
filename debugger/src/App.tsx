@@ -5,7 +5,7 @@ import Toolbar from "./components/Toolbar";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 
 const SAMPLE_DDL = `-- Custom ENUM type
-CREATE TYPE order_status AS ENUM ('pending', 'processing', 'shipped', 'delivered');
+CREATE TYPE order_status AS ENUM('pending', 'processing', 'shipped', 'delivered');
 
 CREATE TABLE users (
   id SERIAL PRIMARY KEY,
@@ -19,9 +19,9 @@ CREATE TABLE users (
 
 CREATE TABLE orders (
   id BIGSERIAL PRIMARY KEY,
-  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER REFERENCES users (id) ON DELETE CASCADE,
   status order_status DEFAULT 'pending',
-  total NUMERIC(10,2) CHECK (total >= 0) NOT NULL,
+  total NUMERIC(10, 2) CHECK (total >= 0) NOT NULL,
   items JSONB,
   notes TEXT,
   ordered_at TIMESTAMP DEFAULT NOW()
