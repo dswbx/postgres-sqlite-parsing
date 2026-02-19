@@ -142,8 +142,12 @@ const tests: TestCase[] = [
         f DECIMAL(5,3)
       );
     `,
-    expectContains: ['REAL', 'NUMERIC'],
-    expectNotContains: ['DOUBLE PRECISION', 'FLOAT4', 'FLOAT8', 'DECIMAL'],
+    expectContains: [
+      'REAL',
+      'CHECK (ABS(ROUND(e * 100) - e * 100) < 0.0001 AND ABS(e) < 100000000)',
+      'CHECK (ABS(ROUND(f * 1000) - f * 1000) < 0.0001 AND ABS(f) < 100)',
+    ],
+    expectNotContains: ['DOUBLE PRECISION', 'FLOAT4', 'FLOAT8', 'DECIMAL', 'NUMERIC'],
   },
 
   // === TEXT TYPES ===
@@ -175,7 +179,7 @@ const tests: TestCase[] = [
         b BOOL DEFAULT FALSE
       );
     `,
-    expectContains: ['INTEGER'],
+    expectContains: ['INTEGER', 'CHECK (a IN (0, 1))', 'CHECK (b IN (0, 1))', 'STRICT'],
     expectNotContains: ['BOOLEAN', 'BOOL'],
   },
 
@@ -191,8 +195,15 @@ const tests: TestCase[] = [
         e INTERVAL
       );
     `,
-    expectContains: ['TEXT'],
-    expectNotContains: ['DATE', 'TIME', 'TIMESTAMP', 'INTERVAL'],
+    expectContains: [
+      'TEXT',
+      'CHECK (a IS NULL OR date(a) IS a)',
+      'CHECK (b IS NULL OR time(b) IS b)',
+      'CHECK (c IS NULL OR datetime(c) IS c)',
+      'CHECK (d IS NULL OR datetime(d) IS d)',
+      'STRICT',
+    ],
+    expectNotContains: ['TIMESTAMP', 'INTERVAL'],
   },
 
   // === JSON TYPES ===
@@ -204,8 +215,12 @@ const tests: TestCase[] = [
         b JSONB
       );
     `,
-    expectContains: ['TEXT'],
-    expectNotContains: ['JSON', 'JSONB'],
+    expectContains: [
+      'TEXT',
+      'CHECK (a IS NULL OR json_valid(a))',
+      'CHECK (b IS NULL OR json_valid(b))',
+    ],
+    expectNotContains: ['JSON(', 'JSONB'],
   },
 
   // === BINARY TYPE ===
@@ -270,7 +285,11 @@ const tests: TestCase[] = [
         scores INTEGER[]
       );
     `,
-    expectContains: ['TEXT'],
+    expectContains: [
+      'TEXT',
+      "CHECK (tags IS NULL OR (json_valid(tags) AND json_type(tags) = 'array'))",
+      "CHECK (scores IS NULL OR (json_valid(scores) AND json_type(scores) = 'array'))",
+    ],
   },
 
   // === RANGE TYPES ===
@@ -349,11 +368,29 @@ const tests: TestCase[] = [
     expectNotContains: ['DEFERRABLE', 'INITIALLY DEFERRED'],
   },
 
-  // === ENUM TYPE ===
+  // === ENUM TYPE (standalone) ===
   {
-    name: 'Enum type',
+    name: 'Enum type (standalone CREATE TYPE)',
     sql: `CREATE TYPE mood AS ENUM ('sad', 'ok', 'happy');`,
-    expectContains: ['-- ENUM', 'sad', 'ok', 'happy'],
+    expectContains: [],
+    expectNotContains: ['CREATE TYPE', 'ENUM'],
+  },
+  // === ENUM TYPE (with table) ===
+  {
+    name: 'Enum type used in table column',
+    sql: `
+      CREATE TYPE order_status AS ENUM ('pending', 'processing', 'shipped', 'delivered');
+      CREATE TABLE orders (
+        id SERIAL PRIMARY KEY,
+        status order_status DEFAULT 'pending'
+      );
+    `,
+    expectContains: [
+      'TEXT',
+      "CHECK (status IN ('pending', 'processing', 'shipped', 'delivered'))",
+      'STRICT',
+    ],
+    expectNotContains: ['order_status', 'ENUM'],
   },
 
   // === SEQUENCE ===

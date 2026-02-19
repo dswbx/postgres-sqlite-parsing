@@ -21,8 +21,8 @@ export const PG_TO_SQLITE: Record<string, string> = {
   real: 'REAL',
   float8: 'REAL',
   'double precision': 'REAL',
-  numeric: 'NUMERIC', // SQLite NUMERIC has affinity rules
-  decimal: 'NUMERIC',
+  numeric: 'REAL', // STRICT tables only allow INT/INTEGER/REAL/TEXT/BLOB/ANY
+  decimal: 'REAL',
   money: 'REAL',
 
   // === Text ===
@@ -234,6 +234,35 @@ export function isSerialType(pgType: string): boolean {
 export function isLengthConstrainedType(pgType: string): boolean {
   const normalized = pgType.toLowerCase();
   return ['varchar', 'character varying', 'char', 'character', 'bpchar'].includes(normalized);
+}
+
+export function isBooleanType(pgType: string): boolean {
+  const normalized = pgType.toLowerCase();
+  return ['bool', 'boolean'].includes(normalized);
+}
+
+export function isTimestampType(pgType: string): boolean {
+  const normalized = pgType.toLowerCase();
+  return ['timestamp', 'timestamptz', 'timestamp without time zone', 'timestamp with time zone'].includes(normalized);
+}
+
+export function isDateType(pgType: string): boolean {
+  return pgType.toLowerCase() === 'date';
+}
+
+export function isTimeType(pgType: string): boolean {
+  const normalized = pgType.toLowerCase();
+  return ['time', 'timetz', 'time without time zone', 'time with time zone'].includes(normalized);
+}
+
+export function isNumericType(pgType: string): boolean {
+  const normalized = pgType.toLowerCase();
+  return ['numeric', 'decimal'].includes(normalized);
+}
+
+export function isJsonType(pgType: string): boolean {
+  const normalized = pgType.toLowerCase();
+  return ['json', 'jsonb'].includes(normalized);
 }
 
 export function mapFunctionToSQLite(pgFunc: string): string {

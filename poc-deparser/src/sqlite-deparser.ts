@@ -1,5 +1,5 @@
 import { Deparser as PgDeparser } from 'pgsql-deparser';
-import { mapTypeToSQLite, isSerialType, isLengthConstrainedType, mapFunctionToSQLite } from './type-map.js';
+import { mapTypeToSQLite, isSerialType, isLengthConstrainedType, isBooleanType, isTimestampType, isDateType, isTimeType, isNumericType, isJsonType, mapFunctionToSQLite } from './type-map.js';
 
 /**
  * SQLite Deparser - extends PostgreSQL deparser with SQLite-specific modifications
@@ -12,6 +12,37 @@ import { mapTypeToSQLite, isSerialType, isLengthConstrainedType, mapFunctionToSQ
  * - A_Expr: Translates PG operators to SQLite equivalents
  */
 export class SQLiteDeparser extends PgDeparser {
+  // Enum registry: type name → list of quoted values
+  private enumRegistry = new Map<string, string[]>();
+
+  /**
+   * Pre-scan AST to collect enum definitions before deparsing
+   */
+  collectEnums(ast: any): void {
+    const stmts = ast?.stmts ?? ast ?? [];
+    for (const entry of Array.isArray(stmts) ? stmts : []) {
+      const node = entry?.stmt?.CreateEnumStmt ?? entry?.RawStmt?.stmt?.CreateEnumStmt;
+      if (!node) continue;
+      const typeName = node.typeName
+        ?.map((n: any) => n.String?.sval || n.String?.str)
+        .filter(Boolean)
+        .join('.');
+      if (!typeName || !node.vals) continue;
+      const vals = (Array.isArray(node.vals) ? node.vals : [])
+        .map((v: any) => v.String?.sval || v.String?.str)
+        .filter(Boolean);
+      this.enumRegistry.set(typeName.toLowerCase(), vals);
+    }
+  }
+
+  /**
+   * Override CreateStmt to append STRICT
+   */
+  CreateStmt(node: any, context: any): string {
+    let result = super.CreateStmt(node, context);
+    return result + ' STRICT';
+  }
+
   /**
    * Override TypeName to map PostgreSQL types to SQLite types
    */
@@ -41,6 +72,11 @@ export class SQLiteDeparser extends PgDeparser {
       return 'TEXT'; // Arrays stored as JSON
     }
 
+    // Enum types → TEXT
+    if (this.enumRegistry.has(pgType.toLowerCase())) {
+      return 'TEXT';
+    }
+
     // Map to SQLite type
     return mapTypeToSQLite(pgType);
   }
@@ -58,26 +94,37 @@ export class SQLiteDeparser extends PgDeparser {
       parts.push(this.quoteIfNeeded(colname));
     }
 
-    // Check if SERIAL type and extract type info for length constraints
+    // Check if SERIAL type and extract type info for constraints
     let isSerial = false;
     let hasPrimaryKey = false;
     let lengthConstraint: { maxLen: number } | null = null;
+    let numericConstraint: { precision: number; scale: number } | null = null;
+    let pgType: string | null = null;
+    let isArray = false;
 
     if (node.typeName) {
       const names = node.typeName.names?.map((n: any) => n.String?.sval || n.String?.str).filter(Boolean);
-      const pgType = names && (names.length === 2 && names[0] === 'pg_catalog' ? names[1] : names[0]);
+      pgType = names && (names.length === 2 && names[0] === 'pg_catalog' ? names[1] : names[0]);
       isSerial = pgType && isSerialType(pgType);
+      isArray = node.typeName.arrayBounds && node.typeName.arrayBounds.length > 0;
+
+      const typmods = Array.isArray(node.typeName.typmods) ? node.typeName.typmods : [];
+      const getTypmod = (i: number) => typmods[i]?.A_Const?.ival?.ival ?? typmods[i]?.A_Const?.val?.ival?.ival;
 
       // Check for length-constrained string types (varchar, char, bpchar)
-      if (pgType && isLengthConstrainedType(pgType) && node.typeName.typmods) {
-        const typmods = Array.isArray(node.typeName.typmods) ? node.typeName.typmods : [];
-        if (typmods.length > 0) {
-          const lenMod = typmods[0];
-          // Length is stored as A_Const with Integer
-          const len = lenMod?.A_Const?.ival?.ival ?? lenMod?.A_Const?.val?.ival?.ival;
-          if (typeof len === 'number' && len > 0) {
-            lengthConstraint = { maxLen: len };
-          }
+      if (pgType && isLengthConstrainedType(pgType) && typmods.length > 0) {
+        const len = getTypmod(0);
+        if (typeof len === 'number' && len > 0) {
+          lengthConstraint = { maxLen: len };
+        }
+      }
+
+      // Check for numeric(precision, scale)
+      if (pgType && isNumericType(pgType) && typmods.length >= 2) {
+        const precision = getTypmod(0);
+        const scale = getTypmod(1);
+        if (typeof precision === 'number' && typeof scale === 'number' && precision > 0 && scale >= 0) {
+          numericConstraint = { precision, scale };
         }
       }
 
@@ -107,6 +154,35 @@ export class SQLiteDeparser extends PgDeparser {
     // Add CHECK constraint for length-constrained string types
     if (lengthConstraint && colname) {
       parts.push(`CHECK (length(${colname}) <= ${lengthConstraint.maxLen})`);
+    }
+
+    // Add CHECK constraint for numeric(precision, scale)
+    if (numericConstraint && colname) {
+      const { precision, scale } = numericConstraint;
+      const multiplier = Math.pow(10, scale);
+      const maxInt = Math.pow(10, precision - scale);
+      parts.push(`CHECK (ABS(ROUND(${colname} * ${multiplier}) - ${colname} * ${multiplier}) < 0.0001 AND ABS(${colname}) < ${maxInt})`);
+    }
+
+    // Add type-validation CHECK constraints
+    if (colname && isArray) {
+      parts.push(`CHECK (${colname} IS NULL OR (json_valid(${colname}) AND json_type(${colname}) = 'array'))`);
+    } else if (pgType && colname) {
+      const enumVals = this.enumRegistry.get(pgType.toLowerCase());
+      if (enumVals) {
+        const quoted = enumVals.map((v) => `'${v}'`).join(', ');
+        parts.push(`CHECK (${colname} IN (${quoted}))`);
+      } else if (isBooleanType(pgType)) {
+        parts.push(`CHECK (${colname} IN (0, 1))`);
+      } else if (isJsonType(pgType)) {
+        parts.push(`CHECK (${colname} IS NULL OR json_valid(${colname}))`);
+      } else if (isTimestampType(pgType)) {
+        parts.push(`CHECK (${colname} IS NULL OR datetime(${colname}) IS ${colname})`);
+      } else if (isDateType(pgType)) {
+        parts.push(`CHECK (${colname} IS NULL OR date(${colname}) IS ${colname})`);
+      } else if (isTimeType(pgType)) {
+        parts.push(`CHECK (${colname} IS NULL OR time(${colname}) IS ${colname})`);
+      }
     }
 
     return parts.join(' ');
@@ -322,27 +398,9 @@ export class SQLiteDeparser extends PgDeparser {
   /**
    * Override CreateEnumStmt - SQLite doesn't have ENUM, create CHECK constraint table instead
    */
-  CreateEnumStmt(node: any, _context: any): string {
-    // Get enum name
-    const typeName = node.typeName
-      ?.map((n: any) => n.String?.sval || n.String?.str)
-      .filter(Boolean)
-      .join('_');
-
-    if (!typeName || !node.vals) {
-      return '-- ENUM type not supported in SQLite';
-    }
-
-    // Get enum values - vals is already an array
-    const vals = Array.isArray(node.vals) ? node.vals : [];
-    const values = vals
-      .map((v: any) => v.String?.sval || v.String?.str)
-      .filter(Boolean)
-      .map((v: string) => `'${v}'`)
-      .join(', ');
-
-    // Create a comment with the enum definition for reference
-    return `-- ENUM ${typeName}: Use CHECK constraint with values IN (${values})`;
+  CreateEnumStmt(_node: any, _context: any): string {
+    // Enum values are inlined as CHECK constraints on columns — nothing to emit
+    return '';
   }
 
   /**
@@ -376,6 +434,9 @@ export class SQLiteDeparser extends PgDeparser {
 
 export function deparse(ast: any): string {
   const deparser = new SQLiteDeparser(ast);
+  deparser.collectEnums(ast);
   // @ts-ignore - access internal method
-  return deparser.deparseQuery();
+  const result = deparser.deparseQuery();
+  // Remove empty statements (e.g. from suppressed CREATE TYPE)
+  return result.replace(/^\s*;\s*\n*/gm, '').trim() + '\n';
 }
