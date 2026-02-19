@@ -26,12 +26,6 @@ jobs:
          - name: Install root deps
            run: npm install
 
-         - name: Build poc-json-schema
-           run: cd poc-json-schema && npm install && npm run build
-
-         - name: Build poc-deparser
-           run: cd poc-deparser && npm install && npm run build
-
          - name: Install debugger deps
            run: cd debugger && npm install
 
