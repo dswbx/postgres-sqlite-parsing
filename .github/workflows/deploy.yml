@@ -1,0 +1,53 @@
+name: Deploy Debugger
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install root deps
+        run: npm ci
+
+      - name: Install poc-json-schema deps
+        run: cd poc-json-schema && npm ci
+
+      - name: Install poc-deparser deps
+        run: cd poc-deparser && npm ci
+
+      - name: Install debugger deps
+        run: cd debugger && npm ci
+
+      - name: Build debugger
+        run: cd debugger && npm run build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: debugger/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
