@@ -34,10 +34,9 @@ function serveLibpgQueryWasm() {
       });
     },
     closeBundle() {
-      const outDir = path.resolve(__dirname, 'dist/assets');
-      const dest = path.join(outDir, 'libpg-query.wasm');
+      const distRoot = path.resolve(__dirname, 'dist');
+      const dest = path.join(distRoot, 'libpg-query.wasm');
       if (!fs.existsSync(dest)) {
-        fs.mkdirSync(outDir, { recursive: true });
         fs.copyFileSync(wasmPath, dest);
       }
     },
