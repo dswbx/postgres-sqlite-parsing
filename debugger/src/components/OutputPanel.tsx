@@ -12,26 +12,35 @@ interface OutputPanelProps {
   sql: string;
 }
 
+type TabState = { result: string; error: string };
+
 export default function OutputPanel({ sql: inputSql }: OutputPanelProps) {
   const [tab, setTab] = useState<Tab>('json-schema');
-  const [result, setResult] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [tabStates, setTabStates] = useState<Record<Tab, TabState>>({
+    'json-schema': { result: '', error: '' },
+    sqlite: { result: '', error: '' },
+  });
   const [loading, setLoading] = useState(false);
+
+  const { result, error } = tabStates[tab];
 
   const generate = useCallback(async () => {
     setLoading(true);
-    setError('');
-    setResult('');
+    setTabStates((s) => ({ ...s, [tab]: { result: '', error: '' } }));
     try {
+      let output: string;
       if (tab === 'json-schema') {
         const schema = await convert(inputSql);
-        setResult(JSON.stringify(schema, null, 2));
+        output = JSON.stringify(schema, null, 2);
       } else {
-        const sqliteResult = await translate(inputSql);
-        setResult(sqliteResult);
+        output = await translate(inputSql);
       }
+      setTabStates((s) => ({ ...s, [tab]: { result: output, error: '' } }));
     } catch (e: any) {
-      setError(e.message || String(e));
+      setTabStates((s) => ({
+        ...s,
+        [tab]: { result: '', error: e.message || String(e) },
+      }));
     } finally {
       setLoading(false);
     }
