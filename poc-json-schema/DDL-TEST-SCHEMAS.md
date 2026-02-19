@@ -91,7 +91,7 @@ CREATE INDEX idx_products_tags ON products USING GIN(tags); -- GIN index: unsupp
 ## Advanced (Mostly Unsupported)
 
 ```sql
--- ENUM type (✅ supported → $defs + $ref)
+-- ENUM type (✅ supported → inlined enum)
 CREATE TYPE order_status AS ENUM ('pending', 'processing', 'shipped', 'delivered', 'cancelled');
 
 CREATE TABLE orders (
@@ -100,7 +100,7 @@ CREATE TABLE orders (
     'ORD-' || LPAD(id::TEXT, 10, '0')
   ) STORED,                                    -- generated column: unsupported
   user_id UUID NOT NULL REFERENCES users(id),
-  status order_status DEFAULT 'pending',       -- ✅ custom ENUM → $ref: "#/$defs/order_status"
+  status order_status DEFAULT 'pending',       -- ✅ custom ENUM → inlined enum
   items JSONB NOT NULL,
   subtotal NUMERIC(12,2) GENERATED ALWAYS AS ( -- generated from JSONB: unsupported
     (SELECT SUM((item->>'price')::NUMERIC * (item->>'qty')::INTEGER)
@@ -183,7 +183,7 @@ CREATE FOREIGN TABLE external_users (           -- FOREIGN TABLE: unsupported
 ```
 
 **Supported Features:**
-- CREATE TYPE AS ENUM → `$defs` + `$ref`
+- CREATE TYPE AS ENUM → inlined `enum`
 - Custom ENUM type references
 
 **Unsupported Features:**
@@ -219,7 +219,7 @@ CREATE FOREIGN TABLE external_users (           -- FOREIGN TABLE: unsupported
 | BYTEA | ✅ | → `string` + `binary` |
 | JSON, JSONB | ✅ | → `object` |
 | ARRAY types | ✅ | → `array` + `items` (multi-dim supported) |
-| Custom ENUM | ✅ | → `$defs` + `$ref` |
+| Custom ENUM | ✅ | → inlined `enum` |
 | LTREE, HSTORE | ❌ | extensions |
 | TSTZRANGE, etc | ❌ | range types |
 | **Constraints** | | |
@@ -245,7 +245,7 @@ CREATE FOREIGN TABLE external_users (           -- FOREIGN TABLE: unsupported
 | GENERATED columns | ❌ | not parsed |
 | **DDL Statements** | | |
 | CREATE TABLE | ✅ | main entry point |
-| CREATE TYPE AS ENUM | ✅ | → `$defs` |
+| CREATE TYPE AS ENUM | ✅ | → inlined `enum` |
 | CREATE INDEX | ❌ | ignored |
 | CREATE TYPE (composite) | ❌ | ignored |
 | CREATE VIEW | ❌ | ignored |
@@ -260,7 +260,7 @@ CREATE FOREIGN TABLE external_users (           -- FOREIGN TABLE: unsupported
 
 1. ~~Arrays → use `type: "array"` + `items`?~~ ✅ Yes, multi-dim supported
 2. Composite PK → `$primaryKey: ["col1", "col2"]` at table level?
-3. ~~Custom ENUMs → inline expand or separate `$defs`?~~ ✅ `$defs` + `$ref`
+3. ~~Custom ENUMs → inline expand or separate `$defs`?~~ ✅ Inlined for readability
 4. Multi-column UNIQUE → table-level `$uniqueConstraints`?
 5. Partial indexes → just ignore, or `$comment`?
 6. Generated columns → mark as `readOnly: true`?

@@ -35,9 +35,6 @@ function q(name: string): string {
 
 function resolveType(prop: PropertySchema, schema: JsonSchema): string {
   if (prop.$ref) {
-    // Enum ref → TEXT
-    if (prop.$ref.startsWith('#/$defs/')) return 'TEXT';
-
     // FK ref → resolve referenced column's type
     const match = prop.$ref.match(
       /^#\/properties\/([^/]+)\/properties\/([^/]+)$/

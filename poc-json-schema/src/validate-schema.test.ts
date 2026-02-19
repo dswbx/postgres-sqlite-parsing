@@ -93,12 +93,14 @@ describe('Schema Validation', () => {
     }
 
     expect(valid).toBe(true);
-    expect(schema.$defs).toBeDefined();
-    expect(schema.$defs?.status).toEqual({ type: 'string', enum: ['pending', 'active', 'closed'] });
-    expect(schema.$defs?.priority).toEqual({ type: 'string', enum: ['low', 'medium', 'high'] });
-    expect(schema.properties.tasks.properties.status).toEqual({ $ref: '#/$defs/status' });
+    expect((schema as any).$defs).toBeUndefined();
+    expect(schema.properties.tasks.properties.status).toEqual({
+      type: 'string',
+      enum: ['pending', 'active', 'closed']
+    });
     expect(schema.properties.tasks.properties.priority).toEqual({
-      $ref: '#/$defs/priority',
+      type: 'string',
+      enum: ['low', 'medium', 'high'],
       default: 'medium'
     });
   });
@@ -167,20 +169,26 @@ describe('Schema Validation', () => {
     expect(validate.errors).toBeDefined();
   });
 
-  test('Invalid $defs entry is rejected', async () => {
+  test('Enum column with wrong type is rejected', async () => {
     const metaSchemaPath = join(import.meta.dir, '..', 'postgres-json-schema.schema.json');
     const metaSchema = JSON.parse(readFileSync(metaSchemaPath, 'utf-8'));
 
     const invalidSchema = {
       $schema: 'https://example.com/postgres-json-schema.json',
       type: 'object',
-      $defs: {
-        status: {
-          type: 'integer',  // ENUMs must be type: string
-          enum: ['a', 'b']
+      properties: {
+        t: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            status: {
+              type: 'string',
+              $ref: '#/properties/users/properties/id'  // has both type and $ref
+            }
+          },
+          required: []
         }
-      },
-      properties: {}
+      }
     };
 
     const ajv = new Ajv2020({ strict: false });

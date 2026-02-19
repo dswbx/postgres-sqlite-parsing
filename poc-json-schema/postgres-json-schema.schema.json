@@ -12,13 +12,6 @@
     "type": {
       "const": "object"
     },
-    "$defs": {
-      "type": "object",
-      "description": "Custom type definitions (e.g., ENUMs from CREATE TYPE)",
-      "additionalProperties": {
-        "$ref": "#/$defs/enumDef"
-      }
-    },
     "properties": {
       "type": "object",
       "additionalProperties": {
@@ -78,9 +71,9 @@
         },
         "$ref": {
           "type": "string",
-          "pattern": "^#/(properties/[^/]+/properties/[^/]+|\\$defs/[^/]+)$",
-          "description": "Reference to another column (FK) or custom type ($defs)",
-          "examples": ["#/properties/users/properties/id", "#/$defs/status"]
+          "pattern": "^#/properties/[^/]+/properties/[^/]+$",
+          "description": "Reference to another column (FK)",
+          "examples": ["#/properties/users/properties/id"]
         },
         "$onDelete": {
           "type": "string",
@@ -95,7 +88,7 @@
       },
       "oneOf": [
         {
-          "description": "Foreign key or enum ref: has $ref, no type duplication",
+          "description": "Foreign key ref: has $ref, no type duplication",
           "required": ["$ref"],
           "not": {
             "anyOf": [
@@ -106,7 +99,7 @@
           }
         },
         {
-          "description": "Regular column: has type, no $ref",
+          "description": "Regular column (including inlined enums): has type, no $ref",
           "required": ["type"],
           "not": {
             "required": ["$ref"]
@@ -133,20 +126,6 @@
           }
         }
       ]
-    },
-    "enumDef": {
-      "description": "Custom ENUM type definition from CREATE TYPE ... AS ENUM",
-      "type": "object",
-      "properties": {
-        "type": { "const": "string" },
-        "enum": {
-          "type": "array",
-          "items": { "type": "string" },
-          "minItems": 1
-        }
-      },
-      "required": ["type", "enum"],
-      "additionalProperties": false
     }
   }
 }

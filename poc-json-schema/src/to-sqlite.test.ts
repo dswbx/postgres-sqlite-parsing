@@ -52,16 +52,15 @@ describe('Type mapping', () => {
 });
 
 describe('$ref resolution', () => {
-  test('$ref to $defs enum → TEXT', () => {
+  test('inline enum → TEXT', () => {
     const schema: JsonSchema = {
       $schema: 'https://example.com/postgres-json-schema.json',
       type: 'object',
-      $defs: { status: { type: 'string', enum: ['a', 'b'] } },
       properties: {
         t: {
           type: 'object',
           additionalProperties: false,
-          properties: { status: { $ref: '#/$defs/status' } },
+          properties: { status: { type: 'string', enum: ['a', 'b'] } },
           required: [],
         },
       },

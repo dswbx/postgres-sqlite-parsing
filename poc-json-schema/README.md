@@ -32,12 +32,6 @@ The generated schema includes a `$schema` property pointing to the meta-schema t
 {
   "$schema": "https://example.com/postgres-json-schema.json",
   "type": "object",
-  "$defs": {
-    "status": {
-      "type": "string",
-      "enum": ["pending", "completed"]
-    }
-  },
   "properties": {
     "users": {
       "type": "object",
@@ -68,7 +62,8 @@ The generated schema includes a `$schema` property pointing to the meta-schema t
           "$onDelete": "cascade"
         },
         "status": {
-          "$ref": "#/$defs/status"
+          "type": "string",
+          "enum": ["pending", "completed"]
         },
         "total": {
           "type": "number",
@@ -101,7 +96,7 @@ The generated schema includes a `$schema` property pointing to the meta-schema t
 - `JSONB` → `object`
 - `BYTEA` → `string` + `format: "binary"`
 - `TEXT[]`, `INTEGER[][]` → `array` + `items` (multi-dimensional supported)
-- `CREATE TYPE ... AS ENUM` → `$defs` + `$ref`
+- `CREATE TYPE ... AS ENUM` → inlined `enum`
 
 ### Constraint Mapping
 - `NOT NULL` → `required` array (except PKs)
@@ -163,7 +158,7 @@ The `$default` property contains the PostgreSQL expression as-is. Applications s
 | BYTEA | ✅ | → `string` + `binary` |
 | JSON, JSONB | ✅ | → `object` |
 | ARRAY types | ✅ | → `array` + `items` (multi-dim supported) |
-| Custom ENUM | ✅ | → `$defs` + `$ref` |
+| Custom ENUM | ✅ | → inlined `enum` |
 | LTREE, HSTORE | ❌ | extensions |
 | TSTZRANGE, etc | ❌ | range types |
 | **Constraints** | | |
@@ -189,7 +184,7 @@ The `$default` property contains the PostgreSQL expression as-is. Applications s
 | GENERATED columns | ❌ | not parsed |
 | **DDL Statements** | | |
 | CREATE TABLE | ✅ | main entry point |
-| CREATE TYPE AS ENUM | ✅ | → `$defs` |
+| CREATE TYPE AS ENUM | ✅ | → inlined `enum` |
 | CREATE INDEX | ❌ | ignored |
 | CREATE TYPE (composite) | ❌ | ignored |
 | CREATE VIEW | ❌ | ignored |
@@ -209,16 +204,16 @@ The output format is defined by a JSON Schema meta-schema in `postgres-json-sche
 
 - **Extends JSON Schema Draft 2020-12** (latest standard)
 - Uses standard JSON Schema properties (type, format, minimum, maximum, enum, pattern, default, items, multipleOf, etc.)
-- Adds `$defs` for custom type definitions (e.g., ENUMs)
 - Adds PostgreSQL-specific `$`-prefixed properties:
   - `$primaryKey`: boolean (primary key indicator)
   - `$index`: true | "unique" (database index: regular or unique)
-  - `$ref`: string (foreign key or custom type reference)
+  - `$ref`: string (foreign key reference)
   - `$onDelete`: string (FK ON DELETE action)
   - `$onUpdate`: string (FK ON UPDATE action)
   - `$default`: string (computed default expression)
+- Custom ENUMs inlined as `{ type: "string", enum: [...] }` (no `$defs`)
 - Enforces constraints:
-  - Foreign key / enum ref columns must have `$ref` and no type duplication
+  - Foreign key columns must have `$ref` and no type duplication
   - Cannot have both `default` and `$default`
   - `$onDelete`/`$onUpdate` only valid with `$ref`
   - Non-ref columns must have `type`

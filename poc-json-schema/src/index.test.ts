@@ -395,17 +395,14 @@ describe('ARRAY Types', () => {
 });
 
 describe('Custom ENUM Types', () => {
-  test('CREATE TYPE ENUM → $defs + $ref', async () => {
+  test('CREATE TYPE ENUM → inlined enum', async () => {
     const schema = await convert(`
       CREATE TYPE status AS ENUM ('pending', 'active');
       CREATE TABLE t (s status);
     `);
-    expect(schema.$defs?.status).toEqual({
+    expect(schema.properties.t.properties.s).toEqual({
       type: 'string',
       enum: ['pending', 'active']
-    });
-    expect(schema.properties.t.properties.s).toEqual({
-      $ref: '#/$defs/status'
     });
   });
 
@@ -423,9 +420,18 @@ describe('Custom ENUM Types', () => {
       CREATE TABLE t (p priority DEFAULT 'medium');
     `);
     expect(schema.properties.t.properties.p).toEqual({
-      $ref: '#/$defs/priority',
+      type: 'string',
+      enum: ['low', 'medium', 'high'],
       default: 'medium'
     });
+  });
+
+  test('no $defs in output', async () => {
+    const schema = await convert(`
+      CREATE TYPE status AS ENUM ('a', 'b');
+      CREATE TABLE t (s status);
+    `);
+    expect((schema as any).$defs).toBeUndefined();
   });
 });
 

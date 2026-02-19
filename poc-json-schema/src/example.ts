@@ -33,7 +33,7 @@ console.log('- VARCHAR(255) -> maxLength preserved');
 console.log('- CHECK -> enum, minimum validation');
 console.log('- TEXT[] -> { type: "array", items: { type: "string" } }');
 console.log('- INTEGER[][] -> nested arrays');
-console.log('- CREATE TYPE ENUM -> $defs + $ref');
+console.log('- CREATE TYPE ENUM -> inlined { type: "string", enum: [...] }');
 console.log('- NUMERIC(10,2) -> multipleOf: 0.01');
 
 console.log('\n\n--- Shallow SQLite DDL ---\n');

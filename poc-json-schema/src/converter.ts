@@ -4,7 +4,6 @@ import { analyzeCheck } from './check-analyzer.js';
 export interface JsonSchema {
   $schema: string;
   type: 'object';
-  $defs?: Record<string, any>;
   properties: Record<string, TableSchema>;
 }
 
@@ -210,13 +209,6 @@ export class PgToJsonSchemaConverter {
 
   constructor(enumRegistry?: Map<string, string[]>) {
     this.enumRegistry = enumRegistry || new Map();
-    // Populate $defs from enum registry
-    if (this.enumRegistry.size > 0) {
-      this.schema.$defs = {};
-      for (const [name, values] of this.enumRegistry) {
-        this.schema.$defs[name] = { type: 'string', enum: values };
-      }
-    }
   }
 
   convertCreateStmt(stmt: any) {
@@ -248,9 +240,9 @@ export class PgToJsonSchemaConverter {
     let prop: PropertySchema;
     let isEnumRef = false;
 
-    // Check if it's a custom enum type
+    // Check if it's a custom enum type — inline the values
     if (this.enumRegistry.has(pgType)) {
-      prop = { $ref: `#/$defs/${pgType}` };
+      prop = { type: 'string', enum: this.enumRegistry.get(pgType)! };
       isEnumRef = true;
     } else {
       const jsonType = mapType(pgType, col.typeName?.typmods, arrayBounds);
