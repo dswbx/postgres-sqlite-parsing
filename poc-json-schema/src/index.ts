@@ -26,5 +26,7 @@ export async function convert(pgSql: string) {
 }
 
 export { PgToJsonSchemaConverter } from './converter.js';
+export type { JsonSchema, TableSchema, PropertySchema } from './converter.js';
 export { mapType, extractTypeName } from './type-map.js';
 export { analyzeCheck } from './check-analyzer.js';
+export { jsonSchemaToSqlite } from './to-sqlite.js';

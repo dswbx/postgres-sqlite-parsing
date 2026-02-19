@@ -1,21 +1,21 @@
 import { mapType, extractTypeName } from './type-map.js';
 import { analyzeCheck } from './check-analyzer.js';
 
-interface JsonSchema {
+export interface JsonSchema {
   $schema: string;
   type: 'object';
   $defs?: Record<string, any>;
   properties: Record<string, TableSchema>;
 }
 
-interface TableSchema {
+export interface TableSchema {
   type: 'object';
   additionalProperties: boolean;
   properties: Record<string, PropertySchema>;
   required: string[];
 }
 
-interface PropertySchema {
+export interface PropertySchema {
   type?: string;
   format?: string;
   maxLength?: number;

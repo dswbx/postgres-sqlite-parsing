@@ -1,11 +1,11 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { sql } from "@codemirror/lang-sql";
 import { json } from "@codemirror/lang-json";
 import { vscodeDark } from "@uiw/codemirror-theme-vscode";
 import { EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
-import { convert } from "@poc/json-schema";
+import { convert, jsonSchemaToSqlite } from "@poc/json-schema";
 import { translate } from "@poc/deparser";
 import { format } from "sql-formatter";
 
@@ -30,17 +30,26 @@ export default function OutputPanel({
       "json-schema": { result: "", error: "" },
    });
    const [loading, setLoading] = useState(false);
+   const [sqliteFromSchema, setSqliteFromSchema] = useState("");
+   const schemaRef = useRef<any>(null);
 
    const { result, error } = tabStates[tab];
 
    const generate = useCallback(async () => {
       setLoading(true);
       setTabStates((s) => ({ ...s, [tab]: { result: "", error: "" } }));
+      if (tab === "json-schema") setSqliteFromSchema("");
       try {
          let output: string;
          if (tab === "json-schema") {
             const schema = await convert(inputSql);
+            schemaRef.current = schema;
             output = JSON.stringify(schema, null, 2);
+            try {
+               setSqliteFromSchema(jsonSchemaToSqlite(schema));
+            } catch {
+               // ignore sqlite derivation errors
+            }
          } else {
             output = await translate(inputSql);
             try {
@@ -73,9 +82,9 @@ export default function OutputPanel({
       }
    };
 
-   const extensions = useMemo(() => {
+   const jsonExtensions = useMemo(() => {
       const exts: Extension[] = [
-         tab === "json-schema" ? json() : sql(),
+         json(),
          EditorView.theme({
             ".cm-content": { fontSize: `${fontSize}px` },
             ".cm-gutters": { fontSize: `${fontSize}px` },
@@ -83,7 +92,19 @@ export default function OutputPanel({
       ];
       if (wordWrap) exts.push(EditorView.lineWrapping);
       return exts;
-   }, [tab, wordWrap, fontSize]);
+   }, [wordWrap, fontSize]);
+
+   const sqlExtensions = useMemo(() => {
+      const exts: Extension[] = [
+         sql(),
+         EditorView.theme({
+            ".cm-content": { fontSize: `${fontSize}px` },
+            ".cm-gutters": { fontSize: `${fontSize}px` },
+         }),
+      ];
+      if (wordWrap) exts.push(EditorView.lineWrapping);
+      return exts;
+   }, [wordWrap, fontSize]);
 
    const tabs: { id: Tab; label: string }[] = [
       { id: "sqlite", label: "SQLite DDL" },
@@ -120,13 +141,46 @@ export default function OutputPanel({
                <pre className="p-4 text-red-400 text-sm whitespace-pre-wrap font-mono">
                   {error}
                </pre>
+            ) : tab === "json-schema" && result ? (
+               <div className="flex flex-col h-full">
+                  <div className="flex-1 min-h-0 overflow-auto">
+                     <CodeMirror
+                        value={result}
+                        readOnly
+                        theme={vscodeDark}
+                        extensions={jsonExtensions}
+                        basicSetup={{ lineNumbers: true, foldGutter: true }}
+                        style={{ height: "100%" }}
+                     />
+                  </div>
+                  {sqliteFromSchema && (
+                     <>
+                        <div className="px-3 py-1 text-xs text-white bg-[#252526] border-y border-[#333]">
+                           SQLite DDL
+                        </div>
+                        <div className="flex-1 min-h-0 overflow-auto">
+                           <CodeMirror
+                              value={sqliteFromSchema}
+                              readOnly
+                              theme={vscodeDark}
+                              extensions={sqlExtensions}
+                              basicSetup={{
+                                 lineNumbers: true,
+                                 foldGutter: true,
+                              }}
+                              style={{ height: "100%" }}
+                           />
+                        </div>
+                     </>
+                  )}
+               </div>
             ) : result ? (
                <>
                   <CodeMirror
                      value={result}
                      readOnly
                      theme={vscodeDark}
-                     extensions={extensions}
+                     extensions={sqlExtensions}
                      basicSetup={{ lineNumbers: true, foldGutter: true }}
                      style={{ height: "100%" }}
                   />
