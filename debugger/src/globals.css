@@ -1,22 +1,29 @@
 @import "tailwindcss";
 
-html, body, #root {
-  height: 100%;
-  margin: 0;
+html,
+body,
+#root {
+   width: 100%;
+   height: 100%;
+   margin: 0;
+   position: fixed;
 }
 
 body {
-  background: #1e1e1e;
-  color: #d4d4d4;
-  font-family: system-ui, -apple-system, sans-serif;
+   background: #1e1e1e;
+   color: #d4d4d4;
+   font-family:
+      system-ui,
+      -apple-system,
+      sans-serif;
 }
 
 /* CodeMirror height fill */
 .cm-editor {
-  height: 100% !important;
-  font-size: 12px !important;
+   height: 100% !important;
+   font-size: 12px !important;
 }
 
 .cm-scroller {
-  overflow: auto !important;
+   overflow: auto !important;
 }
