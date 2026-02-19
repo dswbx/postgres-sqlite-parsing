@@ -24,10 +24,10 @@ export default function OutputPanel({
    fontSize,
    wordWrap,
 }: OutputPanelProps) {
-   const [tab, setTab] = useState<Tab>("json-schema");
+   const [tab, setTab] = useState<Tab>("sqlite");
    const [tabStates, setTabStates] = useState<Record<Tab, TabState>>({
-      "json-schema": { result: "", error: "" },
       sqlite: { result: "", error: "" },
+      "json-schema": { result: "", error: "" },
    });
    const [loading, setLoading] = useState(false);
 
@@ -43,6 +43,11 @@ export default function OutputPanel({
             output = JSON.stringify(schema, null, 2);
          } else {
             output = await translate(inputSql);
+            try {
+               output = format(output, { language: "sqlite" });
+            } catch {
+               // ignore format errors
+            }
          }
          setTabStates((s) => ({ ...s, [tab]: { result: output, error: "" } }));
       } catch (e: any) {
@@ -81,8 +86,8 @@ export default function OutputPanel({
    }, [tab, wordWrap, fontSize]);
 
    const tabs: { id: Tab; label: string }[] = [
-      { id: "json-schema", label: "JSON Schema" },
       { id: "sqlite", label: "SQLite DDL" },
+      { id: "json-schema", label: "JSON Schema" },
    ];
 
    return (
