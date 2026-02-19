@@ -105,7 +105,7 @@ export class SQLiteDeparser extends PgDeparser {
     if (node.typeName) {
       const names = node.typeName.names?.map((n: any) => n.String?.sval || n.String?.str).filter(Boolean);
       pgType = names && (names.length === 2 && names[0] === 'pg_catalog' ? names[1] : names[0]);
-      isSerial = pgType && isSerialType(pgType);
+      isSerial = Boolean(pgType && isSerialType(pgType));
       isArray = node.typeName.arrayBounds && node.typeName.arrayBounds.length > 0;
 
       const typmods = Array.isArray(node.typeName.typmods) ? node.typeName.typmods : [];
